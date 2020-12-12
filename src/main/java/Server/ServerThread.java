@@ -348,7 +348,7 @@ public class ServerThread extends Thread {
                 }
             }
         } catch (IOException e) {
-            System.out.println("客户端 " + socket.getInetAddress().getHostAddress() + "已退出");
+            System.out.println("客户端" + socket.getInetAddress().getHostAddress() + "已退出");
             UserOperation.getUserDao().logoff(user);
             --SocketServer.count;
             SocketServer.stl.remove(this);
