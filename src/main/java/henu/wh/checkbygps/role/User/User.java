@@ -20,6 +20,14 @@ public class User {
     public User() {
     }
 
+    @Override
+    public String toString() {
+        return "User{" +
+                "phone='" + phone + '\'' +
+                ", ip='" + ip + '\'' +
+                '}';
+    }
+
     public void set(String phone, String name, String password, boolean sex, boolean identify) {
         this.phone = phone;
         this.name = name;

@@ -13,10 +13,10 @@ import java.util.List;
 
 public class ServerThread extends Thread {
 
-    Socket socket = null;
+    Socket socket;
+    User user;
 
     static String ip = "";
-    static User user = new User();
 
     public User getUser() {
         return user;
@@ -26,19 +26,21 @@ public class ServerThread extends Thread {
         return socket;
     }
 
-    public ServerThread(Socket socket) {
+    public ServerThread(Socket socket, User user) {
         this.socket = socket;
+        this.user = user;
     }
 
     @Override
     public void run() {
         DataInputStream read = null;
         DataOutputStream write = null;
-        user.setIp(socket.getInetAddress().getHostAddress());
-        ip = socket.getInetAddress().getHostAddress();
+        this.user.setIp(getSocket().getInetAddress().getHostAddress());
+        ip = getSocket().getInetAddress().getHostAddress();
+        System.out.println(user.toString() + ":" + ip);
         try {
             while (true) {
-                read = new DataInputStream(socket.getInputStream());
+                read = new DataInputStream(getSocket().getInputStream());
                 String s = read.readUTF();
                 JSONObject jsonObject = JSONObject.parseObject(s);
                 if (jsonObject.containsKey("operation")) {
@@ -48,7 +50,8 @@ public class ServerThread extends Thread {
                         user.setPassword(jsonObject.getString("passwd"));
                         boolean login = UserOperation.getUserDao().login(user);
                         System.out.println(login);
-                        write = new DataOutputStream(socket.getOutputStream());
+                        System.out.println(user.toString() + ":" + ip);
+                        write = new DataOutputStream(getSocket().getOutputStream());
                         write.writeBoolean(login);
                     } else if (operation.equals("register")) {
                         user.set(jsonObject.getString("phone"),
@@ -57,16 +60,16 @@ public class ServerThread extends Thread {
                                 jsonObject.getBoolean("sex"),
                                 jsonObject.getBoolean("iden"));
                         boolean register = UserOperation.getUserDao().register(user);
-                        write = new DataOutputStream(socket.getOutputStream());
+                        write = new DataOutputStream(getSocket().getOutputStream());
                         write.writeBoolean(register);
                     } else if (operation.equals("quit")) {
-                        System.out.println("客户端" + socket.getInetAddress().getHostAddress() + "已退出");
+                        System.out.println("客户端" + getSocket().getInetAddress().getHostAddress() + "已退出");
                         UserOperation.getUserDao().logoff(user);
                     } else if (operation.equals("updateInfo")) {
                         user.setName(jsonObject.getString("newname"));
                         user.setPassword(jsonObject.getString("newpwd"));
                         boolean updateInfo = UserOperation.getUserDao().updateInfo(user);
-                        write = new DataOutputStream(socket.getOutputStream());
+                        write = new DataOutputStream(getSocket().getOutputStream());
                         write.writeBoolean(updateInfo);
                     } else if (operation.equals("createG")) {
                         Group group = new Group();
@@ -80,7 +83,7 @@ public class ServerThread extends Thread {
                         if (UserOperation.getUserDao().isInGroup(userid, groupid)) {
                             // 成员已经在群中，不需要再次申请
                             System.out.println("成员已经在群中，不需要再次申请");
-                            write = new DataOutputStream(socket.getOutputStream());
+                            write = new DataOutputStream(getSocket().getOutputStream());
                             write.writeUTF("0");
                         } else {
                             // 成员不在群中
@@ -102,7 +105,7 @@ public class ServerThread extends Thread {
                             System.out.println(addGroupProposal.toJSONString());
                             SocketServer.message_list.push(addGroupProposal);
                             SocketServer.isPrint = true;
-                            write = new DataOutputStream(socket.getOutputStream());
+                            write = new DataOutputStream(getSocket().getOutputStream());
                             write.writeUTF("1");
                         }
                     } else if (operation.equals("agreeInG")) {
@@ -177,12 +180,12 @@ public class ServerThread extends Thread {
                         signInfo.setMemnum(groupmembersid.size());
                         boolean b = UserOperation.getUserDao().selectSignInfo(signInfo);
                         if (!b) {
-                            write = new DataOutputStream(socket.getOutputStream());
+                            write = new DataOutputStream(getSocket().getOutputStream());
                             write.writeBoolean(false);
                         } else {
                             boolean b1 = UserOperation.getUserDao().insertSignInfo(signInfo);
                             if (b1) {
-                                write = new DataOutputStream(socket.getOutputStream());
+                                write = new DataOutputStream(getSocket().getOutputStream());
                                 write.writeBoolean(true);
                                 JSONObject back = new JSONObject();
                                 back.put("uid", groupmembersid);
@@ -197,7 +200,7 @@ public class ServerThread extends Thread {
                                 SocketServer.message_list.push(back);
                                 SocketServer.isPrint = true;
                             } else {
-                                write = new DataOutputStream(socket.getOutputStream());
+                                write = new DataOutputStream(getSocket().getOutputStream());
                                 write.writeBoolean(false);
                             }
                         }
@@ -213,7 +216,7 @@ public class ServerThread extends Thread {
                         int n = UserOperation.getUserDao().selectSignNum(signid);
                         int n1 = UserOperation.getUserDao().selectSignMemNum(signid);
                         if (n < 0 || n >= n1) {
-                            write = new DataOutputStream(socket.getOutputStream());
+                            write = new DataOutputStream(getSocket().getOutputStream());
                             write.writeBoolean(false);
                         } else {
                             MemSignInfo memSignInfo = new MemSignInfo(signid, uid, gid, jingdu, weidu, signdate, type);
@@ -225,7 +228,7 @@ public class ServerThread extends Thread {
                                 System.out.println(n);
                                 b = UserOperation.getUserDao().updateSignNum(signid, n);
                             }
-                            write = new DataOutputStream(socket.getOutputStream());
+                            write = new DataOutputStream(getSocket().getOutputStream());
                             write.writeBoolean(b);
                         }
                     }
@@ -239,7 +242,7 @@ public class ServerThread extends Thread {
                         info.put("sex", user.isSex());
                         info.put("iden", user.isIdentify());
                         System.out.println(info.toJSONString());
-                        write = new DataOutputStream(socket.getOutputStream());
+                        write = new DataOutputStream(getSocket().getOutputStream());
                         write.writeUTF(info.toJSONString());
                     } else if (want.equals("groupInfo")) {
                         JSONObject groupInfo = new JSONObject();
@@ -249,7 +252,7 @@ public class ServerThread extends Thread {
                         groupInfo.put("member", user.getIngroup());
                         groupInfo.put("memberG", user.getGroupmem());
                         System.out.println(groupInfo.toJSONString());
-                        write = new DataOutputStream(socket.getOutputStream());
+                        write = new DataOutputStream(getSocket().getOutputStream());
                         write.writeUTF(groupInfo.toJSONString());
                     } else if (want.equals("searchG")) {
                         List<Group> Glist = new ArrayList<Group>();
@@ -257,12 +260,12 @@ public class ServerThread extends Thread {
                         UserOperation.getUserDao().selectGroup(keyword, Glist);
                         JSONObject searchG = new JSONObject();
                         searchG.put("grouplist", Glist);
-                        write = new DataOutputStream(socket.getOutputStream());
+                        write = new DataOutputStream(getSocket().getOutputStream());
                         write.writeUTF(searchG.toJSONString());
                     } else if (want.equals("msgs")) {
                         List<Message> Mlist = new ArrayList<Message>();
                         UserOperation.getUserDao().selectMessage(user.getPhone(), Mlist);
-                        write = new DataOutputStream(socket.getOutputStream());
+                        write = new DataOutputStream(getSocket().getOutputStream());
                         JSONObject getMsg = new JSONObject();
                         getMsg.put("messagelist", Mlist);
                         write.writeUTF(getMsg.toJSONString());
@@ -296,7 +299,7 @@ public class ServerThread extends Thread {
                             o1.put("signInfo", signInfoList);
                             o1.put("tag", "master");
                         }
-                        write = new DataOutputStream(socket.getOutputStream());
+                        write = new DataOutputStream(getSocket().getOutputStream());
                         write.writeUTF(o1.toJSONString());
                     } else if (want.equals("memsign")) {
                         String gid = jsonObject.getString("gid");
@@ -323,13 +326,13 @@ public class ServerThread extends Thread {
                         JSONObject o = new JSONObject();
                         o.put("memlist", memSignInfoList);
                         System.out.println(o);
-                        write = new DataOutputStream(socket.getOutputStream());
+                        write = new DataOutputStream(getSocket().getOutputStream());
                         write.writeUTF(o.toJSONString());
                     } else if (want.equals("signJWD")) {
                         String signID = jsonObject.getString("signID");
                         JSONObject back = new JSONObject();
                         UserOperation.getUserDao().selectJWD(back, signID);
-                        write = new DataOutputStream(socket.getOutputStream());
+                        write = new DataOutputStream(getSocket().getOutputStream());
                         write.writeUTF(back.toJSONString());
                     } else if (want.equals("users_info")) {
                         JSONArray o = (JSONArray) jsonObject.get("uids");
@@ -342,16 +345,17 @@ public class ServerThread extends Thread {
                         }
                         JSONObject back = new JSONObject();
                         back.put("users", users);
-                        write = new DataOutputStream(socket.getOutputStream());
+                        write = new DataOutputStream(getSocket().getOutputStream());
                         write.writeUTF(back.toJSONString());
                     }
                 }
             }
         } catch (IOException e) {
-            System.out.println("客户端" + socket.getInetAddress().getHostAddress() + "已退出");
+            System.out.println("客户端" + getSocket().getInetAddress().getHostAddress() + "已退出");
             UserOperation.getUserDao().logoff(user);
             --SocketServer.count;
             SocketServer.stl.remove(this);
+            SocketServer.skl.remove(getSocket());
         } finally {
             try {
                 //关闭资源
@@ -374,7 +378,7 @@ public class ServerThread extends Thread {
         String phone = this.getUser().getPhone();
         copy.put("uid", phone);
         try {
-            DataOutputStream write = new DataOutputStream(this.socket.getOutputStream());
+            DataOutputStream write = new DataOutputStream(getSocket().getOutputStream());
             write.writeUTF(copy.toJSONString());
             jsonObject.put("isSend", 1);
         } catch (IOException e) {
